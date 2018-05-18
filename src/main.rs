@@ -497,13 +497,15 @@ fn libs_to_key(lib_names: &HashSet<String>) -> String {
 }
 
 fn symbols_to_key(symbols: &[&String]) -> String {
-    symbols.iter().map(|symbol| {
+    let mut pretty_symbols = symbols.iter().map(|symbol| {
         if let Ok(dsym) = Symbol::new(&symbol) {
             dsym.to_string()
         } else {
             symbol.to_string()
         }
-    }).join(", ")
+    }).collect::<Vec<_>>();
+    pretty_symbols.sort();
+    pretty_symbols.join(", ")
 }
 
 

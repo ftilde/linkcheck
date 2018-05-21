@@ -1,11 +1,11 @@
-# We first successfully compile the missing_symbol binary which links to libfoo.so compiled from foo.c.
+# We first successfully compile the example binary which links to libfoo.so compiled from foo.c.
 # After that we compile bar.c (which does not provide the function foo()) and overwrite libfoo.so
-# Running missing_symbol results in a symbol lookup error, as libfoo does not provide foo().
-run: missing_symbol bar_lib
-	@echo Running compiled binary 'missing_symbol':
-	./missing_symbol
+# Running example results in a symbol lookup error, as libfoo does not provide foo().
+run: example bar_lib
+	@echo Running compiled binary 'example':
+	./example
 
-missing_symbol: missing_symbol.c foo_lib
+example: example.c foo_lib
 	gcc -Wall -o $@ -L. -lfoo -Wl,-rpath=\$$ORIGIN $@.c
 
 foo_lib: foo.c

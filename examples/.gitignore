@@ -1,5 +1,3 @@
 
 **/*.so
-library_conflict/library_conflict
-duplicate_symbol/duplicate_symbol
-missig_symbol/missing_symbol
+**/example

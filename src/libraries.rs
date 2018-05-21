@@ -245,14 +245,19 @@ fn collect_libs(lib_path: &Path, search_methods: &[LibSearchMethod], reverse_dep
             return Ok(());
         }
 
-        let lib = result.opened_libs.entry(lib_path.to_path_buf()).or_insert(Library::try_from_path(lib_path.to_owned())?);
+        let prev_lib = result.opened_libs.insert(lib_path.to_path_buf(), Library::try_from_path(lib_path.to_owned())?);
+        assert!(prev_lib.is_none(), "We have just checked that the library is present and return otherwise");
+        let lib = result.opened_libs.get(lib_path).expect("We have just inserted it");
 
         let lib_name = lib.get_name();
 
+        // If the library has not been resolved before, we add it to the map
         if result.resolved.get(lib_name).is_none() {
             let _ = result.resolved.insert(lib_name.to_owned(), lib_path.to_path_buf());
         }
 
+        // Note the reverse dependency (if there is some) of the current library. As this library
+        // has not been analyzed before we can just insert a new entry.
         if let Some(reverse_dependency) = reverse_dependency {
             let res = result.reverse_dependencies.insert(lib_path.to_path_buf(), vec![reverse_dependency]);
             assert!(res.is_none(), "Overwrote reverse dependency entry");
@@ -260,12 +265,18 @@ fn collect_libs(lib_path: &Path, search_methods: &[LibSearchMethod], reverse_dep
 
         let elf = lib.get_elf();
 
+        // Note: It may be safe to just return in this case (as no dyninfo should imply no
+        // dependencies), but I'm not sure.
         let dyninfo = DynInfo::from_elf(&elf).expect("file has no dyninfo");
 
+        // Note: This is quite ugly. But Rust does not really provide string manipulation for paths
+        // or even CStrings. Maybe there is a crate for that? In any case this does not make too
+        // much of a (any?) difference, as long as goblin only provides elf information in the form
+        // of utf8 strings.
         let origin = lib_path.parent().unwrap_or(Path::new("/")).to_str().expect("Path not valid utf8");
 
+        // Populate the library locations array from the context created above.
         let mut lib_locations = LibraryLocations(Vec::new());
-
         for method in search_methods.iter() {
             match method {
                 LibSearchMethod::RPath => {
@@ -289,27 +300,34 @@ fn collect_libs(lib_path: &Path, search_methods: &[LibSearchMethod], reverse_dep
             }
         }
 
+        // Avoid borrowck errors by explicitly taking refernces to parts of the result struct here.
         let resolved = &mut result.resolved;
         let reverse_dependencies = &mut result.reverse_dependencies;
         let problems = &mut result.problems;
 
         dyninfo.libs.iter().filter_map(|&dependency_lib_name| {
 
+            // Try to resolve the location of the library we depend on.
             let dependency_lib_path = lib_locations.try_find_library(dependency_lib_name);
 
             let os_dep_lib_name = OsString::from(dependency_lib_name);
 
-            let maybe_resolved_lib_path = { resolved.get(&os_dep_lib_name).map(|p| p.to_path_buf()) };
+            // Potentially get the path of the library if it has been resolved before.
+            let maybe_resolved_lib_path = { resolved.get(&os_dep_lib_name) };
+
+            // Compare the (potential) previous resolved path and the (potential) now resolved
+            // path. Note problems that arrise from that and add the now resolved dependency
+            // library path to the libraries to be analyzed, if it has not yet been resolved.
             if let Some(resolved_lib_path) = maybe_resolved_lib_path {
-                let reverse_dependencies = reverse_dependencies.get_mut(&resolved_lib_path).unwrap();
+                let reverse_dependencies = reverse_dependencies.get_mut(resolved_lib_path).unwrap();
                 if let Some(ref dependency_lib_path) = &dependency_lib_path {
-                    if *dependency_lib_path != resolved_lib_path {
+                    if dependency_lib_path != resolved_lib_path {
                         problems.push(LibResolveProblem::ResolveConflict {
                             dependent_lib: lib_path.to_path_buf(),
                             lib_name: dependency_lib_name.to_owned(),
                             resolve_path: dependency_lib_path.to_path_buf(),
                             locations: lib_locations.clone(),
-                            prev_resolved_path: resolved_lib_path,
+                            prev_resolved_path: resolved_lib_path.to_path_buf(),
                             first_resolver: reverse_dependencies.first().expect("Already resolved means that there is at least one reverse dependency").to_path_buf(),
                         });
                     } else {

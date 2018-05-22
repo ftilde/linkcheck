@@ -1,5 +1,4 @@
-linkcheck
-=========
+# linkcheck
 
 linkcheck is a tool for detecting problems with dynamic library resolution of elf files.
 Currently, it opens and performs analysis on all library dependencies of the specified file and checks for:
@@ -8,14 +7,14 @@ Currently, it opens and performs analysis on all library dependencies of the spe
 * duplicate symbols
 * missing/conflicting libraries
 
-**Limitations**
+In contrast to (some versions of) ldd, linkcheck does not execute the binary to be analyzed, so (apart from potentially unrelated undiscovered problems) it should be safe to use on untrusted binaries.
+
+## Limitations
 
 The analysis of unresolved and duplicate symbols currently yields a number of false positives, i.e. unresolved and duplicate symbols that are not actually problematic.
 linkcheck is mostly intended to be used to detect *what* the problem is *if* you have a linking related problem in your project.
 
-In contrast to (some versions of) ldd, linkcheck does not execute the binary to be analyzed, so (apart from potentially unrelated undiscovered problems) it should be safe to use on untrusted binaries.
-
-**Usage**
+## Usage
 
 ```
  > linkcheck --help
@@ -45,10 +44,10 @@ ARGS:
 
 ```
 
-**Examples**
+## Examples
 
 Compile the binaries in the `examples` folder and run `linkcheck` on them.
 
-**Licensing**
+## Licensing
 
 linkcheck is released under the MIT license.

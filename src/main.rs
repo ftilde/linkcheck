@@ -20,8 +20,8 @@ use std::collections::{HashMap, HashSet};
 use itertools::Itertools;
 use groupable::Groupable;
 
-// The methods which GNU ld.so uses (if not specified otherwise) to locate libraries. At least
-// accoring to https://en.wikipedia.org/wiki/Rpath
+/// The methods which GNU ld.so uses (if not specified otherwise) to locate libraries. At least
+/// accoring to https://en.wikipedia.org/wiki/Rpath
 fn gnuld_default_search_methods() -> Vec<LibSearchMethod> {
     vec![
         LibSearchMethod::RPath,
@@ -34,17 +34,35 @@ fn gnuld_default_search_methods() -> Vec<LibSearchMethod> {
 }
 
 
-/// Command line options
+/// Show potential dynamic linking problems of ELF files.
 #[derive(Debug, StructOpt)]
 struct Options {
-
-    /// ELF-file to be analysed
-    #[structopt(parse(from_os_str))]
-    file: PathBuf,
-
-    /// Library search locations (in order specified)
+    /// Library search locations (in order specified). Special options are: rpath, runpath,
+    /// ld_library_path, ldconfig:<path_to_ld.so.conf>. All other options are interpreted as fixed
+    /// paths to library locations. If nothing is specified, the default resolution behavior of GNU
+    /// ld.so is mimicked.
     #[structopt(short="l", long="lib")]
     search_methods: Vec<LibSearchMethod>,
+
+    /// Show unresolved symbols
+    #[structopt(short="u", long="unresolved-symbols")]
+    show_unresolved_symbols: bool,
+
+    /// Show used duplicate symbols
+    #[structopt(short="d", long="duplicate-symbols")]
+    show_duplicate_symbols: bool,
+
+    /// Show library resolution problems
+    #[structopt(short="r", long="lib-resolution")]
+    show_lib_resolution_problems: bool,
+
+    /// Perform full analysis (default if neither -u, -d nor -r are specified)
+    #[structopt(short="f", long="full analysis")]
+    full_analysis: bool,
+
+    /// ELF file to be analyzed
+    #[structopt(parse(from_os_str))]
+    file: PathBuf,
 }
 
 fn libs_to_key(lib_names: &HashSet<String>) -> String {
@@ -66,7 +84,7 @@ fn symbols_to_key(symbols: &[&String]) -> String {
 }
 
 
-fn run(options: Options) -> Result<(), Box<Error>> {
+fn run(mut options: Options) -> Result<(), Box<Error>> {
 
     let search_methods = if options.search_methods.is_empty() {
         eprintln!("No search location specified. Assuming default locations for GNU ld");
@@ -74,6 +92,12 @@ fn run(options: Options) -> Result<(), Box<Error>> {
     } else {
         options.search_methods
     };
+
+    if !options.show_duplicate_symbols && !options.show_unresolved_symbols && !options.show_lib_resolution_problems || options.full_analysis {
+        options.show_duplicate_symbols = true;
+        options.show_unresolved_symbols = true;
+        options.show_lib_resolution_problems = true;
+    }
 
     let libs = LibraryDependencies::try_find_for_elf(&options.file, &search_methods)?;
 
@@ -92,7 +116,7 @@ fn run(options: Options) -> Result<(), Box<Error>> {
     let mut t = term::stdout().unwrap();
 
 
-    if !libs.problems.is_empty() {
+    if options.show_lib_resolution_problems && !libs.problems.is_empty() {
         t.fg(term::color::RED).unwrap();
         t.attr(term::Attr::Bold).unwrap();
         writeln!(t, "Library resolving problems:").unwrap();
@@ -104,7 +128,7 @@ fn run(options: Options) -> Result<(), Box<Error>> {
     }
 
 
-    if !unresolved_groups.is_empty() {
+    if options.show_unresolved_symbols && !unresolved_groups.is_empty() {
         t.fg(term::color::RED).unwrap();
         t.attr(term::Attr::Bold).unwrap();
         writeln!(t, "Unresolved symbols:").unwrap();
@@ -118,7 +142,7 @@ fn run(options: Options) -> Result<(), Box<Error>> {
         }
     }
 
-    if !duplicate_groups.is_empty() {
+    if options.show_duplicate_symbols && !duplicate_groups.is_empty() {
         t.fg(term::color::RED).unwrap();
         t.attr(term::Attr::Bold).unwrap();
         writeln!(t, "Exported duplicate symbols:").unwrap();
@@ -139,6 +163,6 @@ fn run(options: Options) -> Result<(), Box<Error>> {
 fn main() {
     let options = Options::from_args();
     if let Err(err) = run(options) {
-        panic!("{}", err);
+        println!("{}", err);
     }
 }

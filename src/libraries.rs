@@ -1,4 +1,5 @@
 use std::fs;
+use std::io;
 use std::path::{Path, PathBuf};
 use std::fmt;
 use std::error::Error;
@@ -6,6 +7,7 @@ use std::ffi::{OsStr, OsString};
 use std::collections::{HashMap};
 
 use goblin::elf::Elf;
+use glob::glob;
 
 const LIBS_D_TAG: u64 = 1;
 const RPATH_D_TAG: u64 = 15;
@@ -242,6 +244,47 @@ impl LibraryDependencies {
     }
 }
 
+
+#[derive(Debug)]
+struct ErrorMsg(String);
+
+impl fmt::Display for ErrorMsg {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+
+impl ::std::error::Error for ErrorMsg {
+    fn description(&self) -> &str {
+        &self.0
+    }
+}
+
+fn search_ld_so_conf(path: &Path, library_locations: &mut LibraryLocations) -> Result<(), Box<Error>> {
+    use std::io::BufRead;
+
+    let file = fs::File::open(path).map_err(|_| ErrorMsg(format!("Could not open ld.so.conf file: {:?}", path)))?;
+    let file = io::BufReader::new(&file);
+
+    const INCLUDE_PREFIX: & 'static str = "include ";
+    for line in file.lines() {
+        let line = line?;
+        let line = line.trim();
+        if line.is_empty() || line.starts_with("#") {
+            // Comment or empty line. skip
+        } else if line.starts_with(INCLUDE_PREFIX) {
+            let included_path = &line[INCLUDE_PREFIX.len()..];
+            for glob_path in glob(included_path)? {
+                let glob_path = glob_path?;
+                search_ld_so_conf(&glob_path, library_locations)?;
+            }
+        } else {
+            library_locations.0.push((PathBuf::from(line), "ldconfig"));
+        }
+    }
+    Ok(())
+}
+
 fn collect_libs(lib_path: &Path, search_methods: &[LibSearchMethod], reverse_dependency: Option<PathBuf>, result: &mut LibraryDependencies) -> Result<(), Box<Error>> {
 
     // Collect the paths to all libraries that the current library (i.e., libpath) depends on
@@ -298,8 +341,8 @@ fn collect_libs(lib_path: &Path, search_methods: &[LibSearchMethod], reverse_dep
                         lib_locations.0.extend(ld_lib_path.as_bytes().split(|b| *b == b':').map(|slice| (PathBuf::from(OsStr::from_bytes(slice)), "LD_LIBRARY_PATH")))
                     }
                 },
-                LibSearchMethod::LDConfig(_cache_file) => {
-                    //TODO
+                LibSearchMethod::LDConfig(conf_file) => {
+                    search_ld_so_conf(conf_file, &mut lib_locations)?;
                 },
                 LibSearchMethod::Fixed(p) => {
                     lib_locations.0.push((p.clone(), "fixed"));

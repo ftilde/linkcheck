@@ -101,6 +101,7 @@ name = "linkcheck"
 version = "0.1.0"
 dependencies = [
  "cpp_demangle 0.2.9 (registry+https://github.com/rust-lang/crates.io-index)",
+ "glob 0.2.11 (registry+https://github.com/rust-lang/crates.io-index)",
  "goblin 0.0.15 (registry+https://github.com/rust-lang/crates.io-index)",
  "groupable 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "itertools 0.7.8 (registry+https://github.com/rust-lang/crates.io-index)",

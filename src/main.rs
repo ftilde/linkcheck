@@ -4,6 +4,7 @@ extern crate cpp_demangle;
 extern crate itertools;
 extern crate groupable;
 extern crate term;
+extern crate glob;
 
 use cpp_demangle::Symbol;
 

@@ -123,7 +123,14 @@ pub struct Library {
 
 impl Library {
     fn try_from_path(path: PathBuf) -> Result<Self, Box<Error>> {
-        let bytes = fs::read(&path)?;
+        let bytes = {
+            use std::io::Read;
+            let mut file = fs::File::open(&path)?;
+            let mut bytes = Vec::new();
+            file.read_to_end(&mut bytes)?;
+            bytes
+        };
+
 
         // Try once to see if it's a valid Elf file, but we do not actually use it here
         {

@@ -11,7 +11,9 @@ Currently, it opens and performs analysis on all library dependencies of the spe
 **Limitations**
 
 The analysis of unresolved and duplicate symbols currently yields a number of false positives, i.e. unresolved and duplicate symbols that are not actually problematic.
-linkcheck is mostly intended to be used to detect *what* the problem is *if* you have a linking related problem with your project.
+linkcheck is mostly intended to be used to detect *what* the problem is *if* you have a linking related problem in your project.
+
+In contrast to (some versions of) ldd, linkcheck does not execute the binary to be analyzed, so (apart from potentially unrelated undiscovered problems) it should be safe to use on untrusted binaries.
 
 **Usage**
 

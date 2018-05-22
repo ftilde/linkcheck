@@ -21,7 +21,7 @@ use itertools::Itertools;
 use groupable::Groupable;
 
 /// The methods which GNU ld.so uses (if not specified otherwise) to locate libraries. At least
-/// accoring to https://en.wikipedia.org/wiki/Rpath
+/// according to https://en.wikipedia.org/wiki/Rpath
 fn gnuld_default_search_methods() -> Vec<LibSearchMethod> {
     vec![
         LibSearchMethod::RPath,
@@ -56,7 +56,7 @@ struct Options {
     #[structopt(short="r", long="lib-resolution")]
     show_lib_resolution_problems: bool,
 
-    /// Perform full analysis (default if neither -u, -d nor -r are specified)
+    /// Perform full analysis (default if neither -u, -d, nor -r are specified)
     #[structopt(short="f", long="full analysis")]
     full_analysis: bool,
 

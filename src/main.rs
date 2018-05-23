@@ -1,25 +1,26 @@
-#[macro_use] extern crate structopt;
-extern crate goblin;
+#[macro_use]
+extern crate structopt;
 extern crate cpp_demangle;
-extern crate itertools;
-extern crate groupable;
-extern crate term;
 extern crate glob;
+extern crate goblin;
+extern crate groupable;
+extern crate itertools;
+extern crate term;
 
 use cpp_demangle::Symbol;
 
 mod libraries;
 mod symbols;
 
-use symbols::*;
 use libraries::*;
+use symbols::*;
 
-use structopt::StructOpt;
-use std::path::{PathBuf};
-use std::error::Error;
-use std::collections::{HashMap, HashSet};
-use itertools::Itertools;
 use groupable::Groupable;
+use itertools::Itertools;
+use std::collections::{HashMap, HashSet};
+use std::error::Error;
+use std::path::PathBuf;
+use structopt::StructOpt;
 
 /// The methods which GNU ld.so uses (if not specified otherwise) to locate libraries. At least
 /// according to https://en.wikipedia.org/wiki/Rpath
@@ -34,7 +35,6 @@ fn gnuld_default_search_methods() -> Vec<LibSearchMethod> {
     ]
 }
 
-
 /// Show potential dynamic linking problems of ELF files.
 #[derive(Debug, StructOpt)]
 struct Options {
@@ -42,23 +42,23 @@ struct Options {
     /// ld_library_path, ldconfig:<path_to_ld.so.conf>. All other options are interpreted as fixed
     /// paths to library locations. If nothing is specified, the default resolution behavior of GNU
     /// ld.so is mimicked.
-    #[structopt(short="l", long="lib")]
+    #[structopt(short = "l", long = "lib")]
     search_methods: Vec<LibSearchMethod>,
 
     /// Show unresolved symbols
-    #[structopt(short="u", long="unresolved-symbols")]
+    #[structopt(short = "u", long = "unresolved-symbols")]
     show_unresolved_symbols: bool,
 
     /// Show used duplicate symbols
-    #[structopt(short="d", long="duplicate-symbols")]
+    #[structopt(short = "d", long = "duplicate-symbols")]
     show_duplicate_symbols: bool,
 
     /// Show library resolution problems
-    #[structopt(short="r", long="lib-resolution")]
+    #[structopt(short = "r", long = "lib-resolution")]
     show_lib_resolution_problems: bool,
 
     /// Perform full analysis (default if neither -u, -d, nor -r are specified)
-    #[structopt(short="f", long="full analysis")]
+    #[structopt(short = "f", long = "full analysis")]
     full_analysis: bool,
 
     /// ELF file to be analyzed
@@ -73,20 +73,21 @@ fn libs_to_key(lib_names: &HashSet<String>) -> String {
 }
 
 fn symbols_to_key(symbols: &[&String]) -> String {
-    let mut pretty_symbols = symbols.iter().map(|symbol| {
-        if let Ok(dsym) = Symbol::new(&symbol) {
-            dsym.to_string()
-        } else {
-            symbol.to_string()
-        }
-    }).collect::<Vec<_>>();
+    let mut pretty_symbols = symbols
+        .iter()
+        .map(|symbol| {
+            if let Ok(dsym) = Symbol::new(&symbol) {
+                dsym.to_string()
+            } else {
+                symbol.to_string()
+            }
+        })
+        .collect::<Vec<_>>();
     pretty_symbols.sort();
     pretty_symbols.join(", ")
 }
 
-
 fn run(mut options: Options) -> Result<(), Box<Error>> {
-
     let search_methods = if options.search_methods.is_empty() {
         eprintln!("No search location specified. Assuming default locations for GNU ld");
         gnuld_default_search_methods()
@@ -94,7 +95,9 @@ fn run(mut options: Options) -> Result<(), Box<Error>> {
         options.search_methods
     };
 
-    if !options.show_duplicate_symbols && !options.show_unresolved_symbols && !options.show_lib_resolution_problems || options.full_analysis {
+    if !options.show_duplicate_symbols && !options.show_unresolved_symbols
+        && !options.show_lib_resolution_problems || options.full_analysis
+    {
         options.show_duplicate_symbols = true;
         options.show_unresolved_symbols = true;
         options.show_lib_resolution_problems = true;
@@ -104,18 +107,25 @@ fn run(mut options: Options) -> Result<(), Box<Error>> {
 
     let symbol_summary = SymbolSummary::from_libs(&libs);
 
-    let duplicate_groups = symbol_summary.exported.iter()
-        .filter(|(symbol, libs)| libs.len() >= 2 && symbol_summary.unresolved.get(symbol.as_str()).is_some() )
+    let duplicate_groups = symbol_summary
+        .exported
+        .iter()
+        .filter(|(symbol, libs)| {
+            libs.len() >= 2 && symbol_summary.unresolved.get(symbol.as_str()).is_some()
+        })
         .map(|(symbol, libs)| (libs_to_key(libs), symbol))
         .group::<HashMap<_, Vec<_>>>();
 
-    let unresolved_groups = symbol_summary.unresolved.iter()
-        .filter(|(symbol, libs)| libs.len() >= 1 && symbol_summary.defined.get(symbol.as_str()).is_none() )
+    let unresolved_groups = symbol_summary
+        .unresolved
+        .iter()
+        .filter(|(symbol, libs)| {
+            libs.len() >= 1 && symbol_summary.defined.get(symbol.as_str()).is_none()
+        })
         .map(|(symbol, libs)| (libs_to_key(libs), symbol))
         .group::<HashMap<_, Vec<_>>>();
 
     let mut t = term::stdout().unwrap();
-
 
     if options.show_lib_resolution_problems && !libs.problems.is_empty() {
         t.fg(term::color::RED).unwrap();
@@ -127,7 +137,6 @@ fn run(mut options: Options) -> Result<(), Box<Error>> {
             writeln!(t, "\t{}", problem).unwrap();
         }
     }
-
 
     if options.show_unresolved_symbols && !unresolved_groups.is_empty() {
         t.fg(term::color::RED).unwrap();
@@ -159,7 +168,6 @@ fn run(mut options: Options) -> Result<(), Box<Error>> {
 
     Ok(())
 }
-
 
 fn main() {
     let options = Options::from_args();

@@ -26,7 +26,6 @@ pub struct SymbolSummary {
 
 impl SymbolSummary {
     pub fn from_libs(libs: &LibraryDependencies) -> SymbolSummary {
-
         let mut summary = SymbolSummary {
             exported: HashMap::new(),
             unresolved: HashMap::new(),
@@ -38,16 +37,28 @@ impl SymbolSummary {
                 if let Some(name) = elf.dynstrtab.get(sym.st_name) {
                     let name = name.expect("Symbol is not valid utf8");
 
-                    if !name.is_empty() && sym.st_bind() == BIND_GLOBAL && sym.st_other != VIS_HIDDEN && sym.st_shndx != NDX_UNDEFINED {
-                        let entry = summary.exported.entry(name.to_string()).or_insert(HashSet::new());
+                    if !name.is_empty() && sym.st_bind() == BIND_GLOBAL
+                        && sym.st_other != VIS_HIDDEN
+                        && sym.st_shndx != NDX_UNDEFINED
+                    {
+                        let entry = summary
+                            .exported
+                            .entry(name.to_string())
+                            .or_insert(HashSet::new());
                         let _ = entry.insert(lib_name.to_string_lossy().to_string());
                     }
                     if !name.is_empty() && sym.st_shndx == NDX_UNDEFINED {
-                        let entry = summary.unresolved.entry(name.to_string()).or_insert(HashSet::new());
+                        let entry = summary
+                            .unresolved
+                            .entry(name.to_string())
+                            .or_insert(HashSet::new());
                         let _ = entry.insert(lib_name.to_string_lossy().to_string());
                     }
                     if !name.is_empty() && sym.st_shndx != NDX_UNDEFINED {
-                        let entry = summary.defined.entry(name.to_string()).or_insert(HashSet::new());
+                        let entry = summary
+                            .defined
+                            .entry(name.to_string())
+                            .or_insert(HashSet::new());
                         let _ = entry.insert(lib_name.to_string_lossy().to_string());
                     }
                 }
@@ -56,4 +67,3 @@ impl SymbolSummary {
         summary
     }
 }
-

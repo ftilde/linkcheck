@@ -14,10 +14,21 @@ In contrast to (some versions of) ldd, linkcheck does not execute the binary to 
 The analysis of unresolved and duplicate symbols currently yields a number of false positives, i.e. unresolved and duplicate symbols that are not actually problematic.
 linkcheck is mostly intended to be used to detect *what* the problem is *if* you have a linking related problem in your project.
 
+## Building
+
+linkcheck is written in Rust and needs a working installation of cargo to build.
+
+```
+$ git clone https://github.com/ftilde/linkcheck
+$ cd linkcheck
+$ cargo build --release
+$ target/release/linkcheck $PATH_TO_FILE_TO_ANALZE
+```
+
 ## Usage
 
 ```
- > linkcheck --help
+$ linkcheck --help
 linkcheck 0.1.0
 ftilde <ftilde@protonmail.com>
 Show potential dynamic linking problems of ELF files.

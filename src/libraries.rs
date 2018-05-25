@@ -30,7 +30,7 @@ impl<'a> DynInfo<'a> {
     }
 
     fn from_elf(elf: &'a Elf) -> Option<Self> {
-        if let Some(ref dynamic) = &elf.dynamic {
+        if let &Some(ref dynamic) = &elf.dynamic {
             let mut dyninfo = DynInfo::new();
             for dyn in dynamic.dyns.iter() {
                 match dyn.d_tag {
@@ -72,7 +72,7 @@ impl LibraryLocations {
     fn try_find_library(&self, lib_name: &str) -> Option<PathBuf> {
         self.0
             .iter()
-            .filter_map(|(dir, _)| {
+            .filter_map(|&(ref dir, _)| {
                 let potential_lib_path = dir.join(lib_name);
                 if potential_lib_path.exists() {
                     Some(potential_lib_path)
@@ -87,7 +87,7 @@ impl LibraryLocations {
 impl fmt::Display for LibraryLocations {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         writeln!(f, "[")?;
-        for (lib, origin) in self.0.iter() {
+        for &(ref lib, ref origin) in self.0.iter() {
             writeln!(f, "\t{:?} ({})", lib, origin)?;
         }
         writeln!(f, "]")
@@ -368,7 +368,7 @@ fn collect_libs(
         let mut lib_locations = LibraryLocations(Vec::new());
         for method in search_methods.iter() {
             match method {
-                LibSearchMethod::RPath => {
+                &LibSearchMethod::RPath => {
                     lib_locations.0.extend(dyninfo.rpath.iter().map(|path| {
                         (
                             PathBuf::from(path.replace("$ORIGIN", origin).to_owned()),
@@ -376,7 +376,7 @@ fn collect_libs(
                         )
                     }))
                 }
-                LibSearchMethod::RunPath => {
+                &LibSearchMethod::RunPath => {
                     lib_locations.0.extend(dyninfo.runpath.iter().map(|path| {
                         (
                             PathBuf::from(path.replace("$ORIGIN", origin).to_owned()),
@@ -384,7 +384,7 @@ fn collect_libs(
                         )
                     }))
                 }
-                LibSearchMethod::LDLibraryPath => {
+                &LibSearchMethod::LDLibraryPath => {
                     if let Some(ld_lib_path) = ::std::env::var_os("LD_LIBRARY_PATH") {
                         use std::os::unix::ffi::OsStrExt;
                         lib_locations
@@ -394,10 +394,10 @@ fn collect_libs(
                             }))
                     }
                 }
-                LibSearchMethod::LDConfig(conf_file) => {
+                &LibSearchMethod::LDConfig(ref conf_file) => {
                     search_ld_so_conf(conf_file, &mut lib_locations)?;
                 }
-                LibSearchMethod::Fixed(p) => {
+                &LibSearchMethod::Fixed(ref p) => {
                     lib_locations.0.push((p.clone(), "fixed"));
                 }
             }
@@ -426,7 +426,7 @@ fn collect_libs(
                 if let Some(resolved_lib_path) = maybe_resolved_lib_path {
                     let reverse_dependencies =
                         reverse_dependencies.get_mut(resolved_lib_path).unwrap();
-                    if let Some(ref dependency_lib_path) = &dependency_lib_path {
+                    if let &Some(ref dependency_lib_path) = &dependency_lib_path {
                         if dependency_lib_path != resolved_lib_path {
                             problems.push(LibResolveProblem::ResolveConflict {
                             dependent_lib: lib_path.to_path_buf(),

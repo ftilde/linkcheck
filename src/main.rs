@@ -110,7 +110,7 @@ fn run(mut options: Options) -> Result<(), Box<Error>> {
     let duplicate_groups = symbol_summary
         .exported
         .iter()
-        .filter(|(symbol, libs)| {
+        .filter(|&(symbol, libs)| {
             libs.len() >= 2 && symbol_summary.unresolved.get(symbol.as_str()).is_some()
         })
         .map(|(symbol, libs)| (libs_to_key(libs), symbol))
@@ -119,7 +119,7 @@ fn run(mut options: Options) -> Result<(), Box<Error>> {
     let unresolved_groups = symbol_summary
         .unresolved
         .iter()
-        .filter(|(symbol, libs)| {
+        .filter(|&(symbol, libs)| {
             libs.len() >= 1 && symbol_summary.defined.get(symbol.as_str()).is_none()
         })
         .map(|(symbol, libs)| (libs_to_key(libs), symbol))
